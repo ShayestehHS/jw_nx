@@ -1,0 +1,1 @@
+from jw_nx.urls import urlpatterns
