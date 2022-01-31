@@ -19,7 +19,7 @@ Installation
   
 For installing this package in your environment run these commands:
 
-     pip install jw_nx
+     pip install jw-nx
      pip install django-rest-knox
 
 Quick start  
