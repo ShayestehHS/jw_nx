@@ -17,7 +17,7 @@ JW_NX = {
     'JW_NX_AUTH_HEADER_PREFIX': 'Bearer',
     'JW_NX_REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'JW_NX_ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'JW_NX_LOGIN_AUTHENTICATION_CLASSES' : settings.REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'],
+    'JW_NX_LOGIN_AUTHENTICATION_CLASSES' : (rest_framework.permission.AllowAny,),
 }
 """
 
