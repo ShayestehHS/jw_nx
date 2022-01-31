@@ -24,17 +24,19 @@ class JSONWebTokenKnoxAuthentication(BaseAuthentication):
 
     @staticmethod
     def validate_auth(auth):
+        auth_len = len(auth)
+        if auth_len != 2:
+            if auth_len == 1:
+                msg = _('Invalid Authorization header')
+                raise exceptions.AuthenticationFailed(msg)
+            elif auth_len > 2:
+                msg = _('Invalid Authorization header. Credentials string should contain no spaces.')
+                raise exceptions.AuthenticationFailed(msg)
+
         if auth[0] != b'Bearer':
             msg = _('Invalid Authorization header. No credentials provided.')
             raise exceptions.AuthenticationFailed(msg)
 
-        if len(auth) != 2:
-            if len(auth) == 1:
-                msg = _('Invalid Authorization header')
-                raise exceptions.AuthenticationFailed(msg)
-            elif len(auth) > 2:
-                msg = _('Invalid Authorization header. Credentials string should contain no spaces.')
-                raise exceptions.AuthenticationFailed(msg)
         return auth[0], auth[1]
 
     @staticmethod
@@ -91,6 +93,8 @@ class JSONWebTokenKnoxAuthentication(BaseAuthentication):
 
     def authenticate(self, request):
         auth = get_authorization_header(request).split()  # [PREFIX, KEY]
+        if len(auth) == 0:
+            return None
         prefix, token = self.validate_auth(auth)
         user = self.authenticate_credentials(self.get_payload(token))
         access = AccessToken()
@@ -106,6 +110,3 @@ class JSONWebTokenKnoxAuthentication(BaseAuthentication):
         """
 
         return f'Bearer realm="{self.www_authenticate_realm}"'
-
-
-
