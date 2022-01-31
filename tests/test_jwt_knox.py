@@ -1,9 +1,7 @@
-import datetime
 import random
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
-from django.db.models import Avg, Count, F, Sum
+from django.db.models import F
 from knox.models import AuthToken
 from rest_framework.test import APITestCase
 
@@ -101,6 +99,13 @@ class APIAuthTest(APITestCase):
             response = self.with_token(ac).client.post(verify_url)
 
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_verify_without_bearer(self):
+        """ Test that authentication without bearer header is fail """
+        response = self.client.post(verify_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['detail'].title(), "Authentication Credentials Were Not Provided.")
 
     def test_verify_with_invalid_access_token(self):
         """ Test verify endpoint with invalid access token """
