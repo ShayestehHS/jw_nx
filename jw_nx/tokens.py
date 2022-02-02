@@ -70,20 +70,6 @@ class Token:
         """ Signs and returns a token as a base64 encoded string. """
         return self.token_backend.encode(self.payload)
 
-    def verify(self):
-        """
-        Performs additional validation steps which were not performed when this
-        token was decoded.  This method is part of the "public" API to indicate
-        the intention that it may be overridden in subclasses.
-        """
-        self.verify_exp()
-
-        # Ensure token id is present
-        if 'jti' not in self.payload:
-            raise TokenError(_('Token has no id'))
-
-        self.verify_token_type()
-
     def verify_payload(self):
         for claim in self.payload:
             if claim not in self.claims:
@@ -185,11 +171,7 @@ class Token:
         """
         Set user_id to payload
         """
-        self.payload[f'user_{USER_ID_FIELD}'] = user_id
-
-    def check_token_life(self):
-        if (self.token_type or self.lifetime) is not NotImplemented:
-            raise TokenError(_('Cannot create token with no type or lifetime'))
+        self.payload[f'user_id'] = user_id
 
     def decode(self, token):
         try:
