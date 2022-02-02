@@ -173,11 +173,27 @@ class Token:
         """
         self.payload[f'user_id'] = user_id
 
-    def decode(self, token):
+    @staticmethod
+    def decode(token):
         try:
-            return self.token_backend.decode(token=token, verify=True)
-        except TokenBackendError:
-            raise TokenError(_('Token is invalid or expired'))
+            payload = api_settings.JW_NX_DECODE_HANDLER(token)
+        except jwt.ExpiredSignatureError:
+            msg = _('Signature has expired.')
+            raise exceptions.AuthenticationFailed(msg)
+        except jwt.DecodeError:
+            msg = _('Error decoding signature.')
+            raise exceptions.AuthenticationFailed(msg)
+        except jwt.InvalidTokenError:
+            msg = _('Invalid token error')
+            raise exceptions.AuthenticationFailed(msg)
+        except Exception as e:
+            msg = _(f'Unknown error. Detail: {e}')
+            raise exceptions.AuthenticationFailed(msg)
+
+        if payload is None:
+            msg = _('Error getting payload.')
+            raise exceptions.AuthenticationFailed(msg)
+        return payload
 
 
 class AccessToken(Token):

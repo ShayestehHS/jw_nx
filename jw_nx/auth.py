@@ -49,28 +49,6 @@ class JSONWebTokenKnoxAuthentication(BaseAuthentication):
             msg = _("Invalid expiration type.")
             raise exceptions.AuthenticationFailed(msg)
 
-    @staticmethod
-    def get_payload(token):
-        try:
-            payload = jwt_decode_handler(token)
-        except jwt.ExpiredSignatureError:
-            msg = _('Signature has expired.')
-            raise exceptions.AuthenticationFailed(msg)
-        except jwt.DecodeError:
-            msg = _('Error decoding signature.')
-            raise exceptions.AuthenticationFailed(msg)
-        except jwt.InvalidTokenError:
-            msg = _('Invalid token error')
-            raise exceptions.AuthenticationFailed(msg)
-        except Exception as e:
-            msg = _(f'Unknown error. Detail: {e}')
-            raise exceptions.AuthenticationFailed(msg)
-
-        if payload is None:
-            msg = _('Error getting payload.')
-            raise exceptions.AuthenticationFailed(msg)
-        return payload
-
     def authenticate_credentials(self, payload):
         """ Returns an active user that matches the payload's user id and token. """
         user_id = payload.get(f'user_id')
