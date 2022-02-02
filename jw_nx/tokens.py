@@ -16,7 +16,6 @@ from jw_nx.settings import api_settings
 from jw_nx.utils import aware_utc_now, datetime_to_unix, datetime_from_unix
 
 USER = get_user_model()
-USER_ID_FIELD = api_settings.JW_NX_USER_ID_FIELD
 try:
     from hmac import compare_digest
 except ImportError:

@@ -9,8 +9,7 @@ USER_SETTINGS = getattr(settings, 'JW_NX', None)
 JW_NX = {
     'JW_NX_LEEWAY' : 0,
     'JW_NX_ISSUER': None,
-    'JW_NX_AUDIENCE': None, 
-    'JW_NX_USER_ID_FIELD': 'id',
+    'JW_NX_AUDIENCE': None,
     'JW_NX_RETURN_EXPIRATION': False,
     'JW_NX_UPDATE_LAST_LOGIN': False,
     'JW_NX_EXPIRE': timedelta(hours=10),
@@ -28,7 +27,6 @@ DEFAULTS = {
     'JW_NX_AUDIENCE': None,
     'JW_NX_SIGNING_KEY': settings.SECRET_KEY,
     'JW_NX_ALGORITHM': 'HS256',
-    'JW_NX_USER_ID_FIELD': 'id',
     'JW_NX_VERIFYING_KEY': None,
     'JW_NX_RETURN_EXPIRATION': False,  # Optional
     'JW_NX_UPDATE_LAST_LOGIN': False,  # Optional

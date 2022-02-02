@@ -9,7 +9,6 @@ from jw_nx.tokens import AccessToken
 
 User = get_user_model()
 jwt_decode_handler = api_settings.JW_NX_DECODE_HANDLER
-USER_ID_FIELD = api_settings.JW_NX_USER_ID_FIELD
 
 
 class JSONWebTokenKnoxAuthentication(BaseAuthentication):
