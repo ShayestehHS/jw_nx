@@ -60,8 +60,12 @@ class APIAuthTest(APITestCase):
             'username': user.username,
             'password': self.password
         }
-
-        response = self.client.post(login_url, data=payload, format='json')
+        with self.assertNumQueries(2):
+            """
+             Expected queries:
+             
+            """
+            response = self.client.post(login_url, data=payload, format='json')
         self.assertIn('access_token', response.data)
         self.assertIn('refresh_token', response.data)
         access = response.data['access_token']
@@ -92,10 +96,15 @@ class APIAuthTest(APITestCase):
             'username': user.username,
             'password': 'invalid password'
         }
-        # ToDo assert query num
-        # ToDo assert message of status
-        response = self.client.post(login_url, data=payload, format='json')
 
+        with self.assertNumQueries(1):
+            """
+             Expected queries:
+             1. Retrieve user by `username`(Password is check with python not DataBase)
+            """
+            response = self.client.post(login_url, data=payload, format='json')
+
+        self.assertEqual(str(response.data['detail']), 'Unable to log in with provided credentials.')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_verify(self):
@@ -110,34 +119,23 @@ class APIAuthTest(APITestCase):
             """
             response = self.with_token(ac).client.post(verify_url)
 
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_verify_without_bearer(self):
         """ Test that authentication without bearer header is fail """
-        response = self.client.post(verify_url)
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['detail'].title(), "Authentication Credentials Were Not Provided.")
-
-    def test_verify_with_invalid_access_token(self):
-        """ Test verify endpoint with invalid access token """
-        user = self.create_test_user()
-        ac, re = self.login(user)
-        ac += '0'
         with self.assertNumQueries(0):
-            response = self.with_token(ac).client.post(verify_url)
+            response = self.client.post(verify_url)
 
-            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-            self.assertEqual(response.data['detail'].title().lower(), 'Error decoding signature.'.lower())
+        self.assertEqual(str(response.data['detail']), "Authentication credentials were not provided.")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_verify_with_wrong_jkt(self):
         """ Test verify endpoint with invalid knox_token(jkt claim) """
-        user = self.create_test_user()
-        ac, re = self.login(user)
+        ac, re = self.login()
         # Update jkt claim value
         access = AccessToken()
         access.payload = access.decode(ac)
-        access.payload['jkt'] = 'Invalid1Knox2Token'
+        access.payload['jkt'] = ''.join(random.choice(string.ascii_lowercase) for x in range(64))
 
         with self.assertNumQueries(1):
             """
@@ -146,8 +144,8 @@ class APIAuthTest(APITestCase):
             """
             response = self.with_token(str(access)).client.post(verify_url)
 
-            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-            self.assertEqual(response.data['detail'].title().lower(), 'Invalid Token'.lower())
+        self.assertEqual(str(response.data['detail']), 'Invalid token')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_verify_with_short_jkt(self):
         """ Test that verify endpoint with short 'jkt' claim """
@@ -160,8 +158,8 @@ class APIAuthTest(APITestCase):
         with self.assertNumQueries(0):
             response = self.with_token(str(access)).client.post(verify_url)
 
+        self.assertEqual(str(response.data['detail']), "Invalid 'jtk' claim")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['detail'], "Invalid 'jtk' claim")
 
     def test_verify_with_expired_token(self):
         """ Test that expired knox token is not valid """
@@ -171,8 +169,8 @@ class APIAuthTest(APITestCase):
 
         response = self.with_token(ac).client.post(verify_url)
 
+        self.assertEqual(str(response.data['detail']), 'Invalid token')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['detail'].title().lower(), 'Invalid Token'.lower())
 
     def test_verify_with_expired_access_token(self):
         """ Test that expired access token is not valid """
@@ -187,8 +185,18 @@ class APIAuthTest(APITestCase):
         with self.assertNumQueries(0):
             response = self.with_token(str(access)).client.post(verify_url)
 
+        self.assertEqual(str(response.data['detail']), 'Signature has expired.')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['detail'].title().lower(), 'Signature has expired.'.lower())
+
+    def test_verify_with_invalid_access_token(self):
+        """ Test verify endpoint with invalid access token """
+        ac, re = self.login()
+        ac += '0'
+        with self.assertNumQueries(0):
+            response = self.with_token(ac).client.post(verify_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(str(response.data['detail']), 'Error decoding signature.')
 
     def test_refresh(self):
         """ Test refresh endpoint with valid refresh_token that should return `new` and `valid` access_token """
@@ -197,9 +205,9 @@ class APIAuthTest(APITestCase):
         payload = {"refresh_token": re}
         response = self.client.post(refresh_url, data=payload, format='json')
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access_token', response.data)
         self.assertIn('refresh_token', response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         check_response = self.with_token(response.data['access_token']).client.get(verify_url)
         self.assertEqual(check_response.status_code, status.HTTP_204_NO_CONTENT)
@@ -214,8 +222,8 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': re}
             response = self.client.post(refresh_url, data=payload, format='json')
 
+        self.assertEqual(str(response.data['detail']), 'Error decoding signature.')
         self.assertNotIn('access_token', response.data)
-        self.assertEqual(response.data['detail'].title(), 'Token Is Invalid Or Expired')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_invalid_user_id(self):
@@ -233,16 +241,16 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': str(refresh)}
             response = self.client.post(refresh_url, data=payload, format='json')
 
+        self.assertEqual(str(response.data['detail']), 'Invalid token')
         self.assertNotIn('access_token', response.data)
-        self.assertEqual(response.data['detail'].title(), 'Invalid Token')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_invalid_jtk(self):
-        """ Test that refresh token with invalid `jtk` claim is not valid """
+        """ Test that refresh token with short `jtk` claim is not valid """
         ac, re = self.login()
         refresh = RefreshToken()
         refresh.validate_token(re)
-        refresh.payload['jkt'] = 'Invalid1Token2Key3'
+        refresh.payload['jkt'] = ''.join(random.choice(string.ascii_lowercase) for x in range(64))
 
         with self.assertNumQueries(1):
             """
@@ -252,8 +260,8 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': str(refresh)}
             response = self.client.post(refresh_url, data=payload, format='json')
 
+        self.assertEqual(response.data['detail'], 'Invalid token')
         self.assertNotIn('access_token', response.data)
-        self.assertEqual(response.data['detail'].title(), 'Invalid Token')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_short_jtk(self):
@@ -267,28 +275,25 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': str(refresh)}
             response = self.client.post(refresh_url, data=payload, format='json')
 
-        self.assertNotIn('access_token', response.data)
         self.assertEqual(str(response.data['detail']), "Invalid 'jtk' claim")
+        self.assertNotIn('access_token', response.data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_logout_current(self):
         """ Test that logout endpoint is working correctly """
-        user = self.create_test_user()
-        ac, re = self.login(user)
+        ac, re = self.login()
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             """
              Expected queries:
              1- Retrieve user and knox token by 'jtk' claim
              2- Delete knox token from database
-             ----------
-             3- Retrieve user and knox token by 'jkt' claim
             """
             response = self.with_token(ac).client.post(logout_current_url)
-            check_response = self.with_token(ac).client.post(verify_url)
+        check_response = self.with_token(ac).client.post(verify_url)
 
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-            self.assertEqual(check_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(check_response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_logout_other(self):
         """ Test that logout other endpoint is working correctly """
