@@ -3,7 +3,7 @@ def pytest_configure():
 
     settings.configure(
         DEBUG_PROPAGATE_EXCEPTIONS=True,
-        DEBUG = True,
+        DEBUG=True,
         DATABASES={
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',

@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework import status
 
+from jw_nx.settings import api_settings
 from jw_nx.tokens import AccessToken, RefreshToken
 
 verify_url = reverse('jw-nx-verify')
@@ -174,8 +175,7 @@ class APIAuthTest(APITestCase):
 
     def test_verify_with_expired_access_token(self):
         """ Test that expired access token is not valid """
-        user = self.create_test_user()
-        ac, re = self.login(user)
+        ac, re = self.login()
 
         # Update expiration time
         access = AccessToken()
@@ -187,6 +187,20 @@ class APIAuthTest(APITestCase):
 
         self.assertEqual(str(response.data['detail']), 'Signature has expired.')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_verify_with_expired_access_token_and_leeway(self):
+        """ Test that expired token is valid in leeway time """
+        ac, re = self.login()
+        # Update expiration time
+        access = AccessToken()
+        access.payload = access.decode(ac)
+        access.payload['exp'] -= 24 * 60 * 60  # On day ago
+        api_settings.JW_NX_LEEWAY = timedelta(days=1, seconds=10)
+
+        with self.assertNumQueries(1):
+            response = self.with_token(str(access)).client.post(verify_url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_verify_with_invalid_access_token(self):
         """ Test verify endpoint with invalid access token """

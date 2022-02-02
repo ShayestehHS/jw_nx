@@ -99,12 +99,13 @@ class Token:
         try:
             claim_value = self.payload[claim]
         except KeyError:
-            msg = _(f"Token has no '{claim}' claim")
+            msg = _(f"Token has no 'exp' claim")
             raise TokenError(msg)
 
         claim_time = datetime_from_unix(claim_value)
-        if claim_time <= self.current_time:
-            msg = _(f"Token '{claim}' claim has expired")
+        now = self.current_time
+        if claim_time <= now and claim_time + api_settings.JW_NX_LEEWAY <= now:
+            msg = _(f"Token 'exp' claim has expired")
             raise TokenError(msg)
 
     def verify_user_id_field(self):
