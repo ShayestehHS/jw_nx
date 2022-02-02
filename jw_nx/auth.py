@@ -1,4 +1,3 @@
-import jwt
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
 from knox.settings import CONSTANTS
@@ -74,11 +73,10 @@ class JSONWebTokenKnoxAuthentication(BaseAuthentication):
         if len(auth) == 0:
             return None
         prefix, token = self.validate_auth(auth)
-        user = self.authenticate_credentials(self.get_payload(token))
         access = AccessToken()
-        access.validate_token(token, user)
+        access.validate_token(token)
 
-        return user, access.payload['jkt'][:CONSTANTS.TOKEN_KEY_LENGTH]
+        return access.user, access.payload['jkt'][:CONSTANTS.TOKEN_KEY_LENGTH]
 
     def authenticate_header(self, request):
         """

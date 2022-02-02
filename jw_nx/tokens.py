@@ -117,12 +117,14 @@ class Token:
 
     def verify_jkt(self):
         knox_token = self.get('jkt')
+        if len(knox_token) != 64: raise TokenError(_("Invalid 'jtk' claim"))
         if isinstance(knox_token, str): knox_token = bytes(knox_token, 'utf-8')
-        matched_token = None
         token = knox_token.decode()
+        matched_token = None
         auth_tokens = AuthToken.objects \
             .filter(token_key=token[:CONSTANTS.TOKEN_KEY_LENGTH],
-                    expiry__gte=aware_utc_now(), user_id=self.get('user_id'))
+                    expiry__gte=aware_utc_now(), user_id=self.get('user_id')) \
+            .select_related('user')
         for auth_token in auth_tokens:
             try:
                 digest = hash_token(token, auth_token.salt)
@@ -136,6 +138,7 @@ class Token:
         if matched_token is None:
             msg = _("Invalid token")
             raise TokenError(msg)
+        self.user = matched_token.user
         return matched_token
 
     def set_token_type(self, claim='token_type'):
@@ -236,12 +239,11 @@ class AccessToken(Token):
         self.set_user_id_field(user.id)
         self.set_jkt(user, jkt)
 
-    def validate_token(self, token, user):
+    def validate_token(self, token):
         self.payload = self.decode(token)
         self.verify_payload()
         self.verify_token_type()
         self.verify_user_id_field()
-        self.verify_user(user)
         self.verify_exp()
         self.verify_jti()
         self.verify_jkt()
@@ -285,8 +287,6 @@ class RefreshToken(Token):
     def access_token(self):
         if not self.is_verified:
             raise TokenBackendError("Refresh token is not verified.")
-        if not hasattr(self, 'user'):
-            self.user = USER.objects.filter(id=self.payload['user_id']).only('id').first()
         access = AccessToken(current_time=self.current_time)
         access.create_token(self.user, self.payload['jkt'])
         return access

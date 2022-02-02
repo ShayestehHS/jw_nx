@@ -76,14 +76,13 @@ class APIAuthTest(APITestCase):
 
     def test_login(self):
         """ Test that login view is creating access_token and refresh_token """
-        with self.assertNumQueries(3):
+        user = self.create_test_user()
+        with self.assertNumQueries(2):
             """
              Expected queries:
-             1- Create user
-             2- Retrieve user by authentication credentials
-             3- Create knox token in validate method of LoginSerializer
+             1- Retrieve user by authentication credentials
+             2- Create knox token in `validate` method of LoginSerializer
             """
-            user = self.create_test_user()
             ac, re = self.login(user)
 
     def test_login_invalid_password(self):
@@ -104,11 +103,10 @@ class APIAuthTest(APITestCase):
         user = self.create_test_user()
         ac, re = self.login(user)
 
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(1):
             """
              Expected queries:
-             1- Retrieve user by authentication credentials
-             2- Retrieve knox token in validate_jkt
+             1- Retrieve user and knox token in validate_jkt
             """
             response = self.with_token(ac).client.post(verify_url)
 
@@ -141,11 +139,10 @@ class APIAuthTest(APITestCase):
         access.payload = access.decode(ac)
         access.payload['jkt'] = 'Invalid1Knox2Token'
 
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(1):
             """
              Expected queries:
-             1- Retrieve user by authentication credentials
-             2- Retrieve knox by invalid jkt token_key
+             1- Retrieve user and knox by invalid jkt token_key
             """
             response = self.with_token(str(access)).client.post(verify_url)
 
@@ -279,15 +276,13 @@ class APIAuthTest(APITestCase):
         user = self.create_test_user()
         ac, re = self.login(user)
 
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(3):
             """
              Expected queries:
-             1- Retrieve user by authentication credentials
-             2- Retrieve knox token by 'jtk' claim
-             3- Delete knox token from database
+             1- Retrieve user and knox token by 'jtk' claim
+             2- Delete knox token from database
              ----------
-             4- Retrieve user by authentication credentials
-             5- Retrieve knox token by 'jkt' claim
+             3- Retrieve user and knox token by 'jkt' claim
             """
             response = self.with_token(ac).client.post(logout_current_url)
             check_response = self.with_token(ac).client.post(verify_url)
@@ -302,12 +297,11 @@ class APIAuthTest(APITestCase):
         ac2, re2 = self.login(user)
         ac3, re3 = self.login(user)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             """
              Expected queries:
-             1- Retrieve user by authentication credentials
-             2- Retrieve knox token by 'jtk' claim
-             3- Delete excluded knox tokens
+             1- Retrieve user and knox token by 'jtk' claim
+             2- Delete excluded knox tokens
             """
             response = self.with_token(ac1).client.post(logout_other_url)
         response_check1 = self.with_token(ac1).client.post(verify_url)
@@ -326,12 +320,11 @@ class APIAuthTest(APITestCase):
         ac2, re2 = self.login(user)
         ac3, re3 = self.login(user)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             """
              Expected queries:
-             1- Retrieve user by authentication credentials
-             2- Retrieve knox token by 'jtk' claim
-             3- Delete excluded knox tokens
+             1- Retrieve user and knox token by 'jtk' claim
+             2- Delete excluded knox tokens
             """
             response = self.with_token(ac1).client.post(logout_all_url)
         response_check1 = self.with_token(ac1).client.post(verify_url)
@@ -354,8 +347,8 @@ class APIAuthTest(APITestCase):
 
         # expire all tokens that belong to this user
         AuthToken.objects.filter(user_id=user.id).update(expiry=F('expiry') - (F('expiry') + timedelta(hours=10)))
-
-        response = self.with_token(ac).client.post(delete_expired_tokens_url)
+        with self.assertNumQueries(2):
+            response = self.with_token(ac).client.post(delete_expired_tokens_url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.data['Count'], 3)
@@ -374,12 +367,11 @@ class APIAuthTest(APITestCase):
 
         admin = self.create_test_admin()  # This line is create 1 user and 1 extra token
         ac, re = self.login(admin)
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             """
              Expected queries:
-             1- Retrieve user by ID from 'user_id' claim
-             2- Retrieve knox token by 'jtk' claim
-             3- Get average of expired counts of tokens for every user
+             1- Retrieve user and knox token by 'jtk' claim
+             2- Get average of expired counts of tokens for every user
             """
             response = self.with_token(ac).client.get(average_per_user_url)
 
@@ -423,12 +415,11 @@ class APIAuthTest(APITestCase):
 
         admin = self.create_test_admin()  # This line is create 1 user and 1 extra token
         ac, re = self.login(admin)
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             """
              Expected queries:
-             1- Retrieve user by ID from 'user_id' claim
-             2- Retrieve knox token by 'jtk' claim
-             3- Get average of counts of created tokens for every user
+             1- Retrieve user and knox token by 'jtk' claim
+             2- Get average of counts of created tokens for every user
             """
             response = self.with_token(ac).client.get(average_expired_per_user_url)
 
@@ -470,12 +461,11 @@ class APIAuthTest(APITestCase):
 
         admin = self.create_test_admin()  # This line is create 1 user and 1 extra token
         ac, re = self.login(admin)
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             """
              Expected queries:
-             1- Retrieve user by ID from 'user_id' claim
-             2- Retrieve knox token by 'jtk' claim
-             3- Get average of active token counts for every user
+             1- Retrieve knox token by 'jtk' claim
+             2- Get average of active token counts for every user
             """
             response = self.with_token(ac).client.get(average_active_per_user_url)
 
