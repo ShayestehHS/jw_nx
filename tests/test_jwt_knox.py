@@ -189,6 +189,8 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': re}
             response = self.client.post(refresh_url, data=payload, format='json')
 
+        self.assertNotIn('access_token', response.data)
+        self.assertEqual(response.data['detail'].title(), 'Token Is Invalid Or Expired')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_invalid_user_id(self):
@@ -206,9 +208,9 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': str(refresh)}
             response = self.client.post(refresh_url, data=payload, format='json')
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['detail'].title(), 'Invalid Token')
         self.assertNotIn('access_token', response.data)
+        self.assertEqual(response.data['detail'].title(), 'Invalid Token')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_refresh_invalid_jtk(self):
         """ Test that refresh token with invalid `jtk` claim is not valid """
@@ -225,9 +227,9 @@ class APIAuthTest(APITestCase):
             payload = {'refresh_token': str(refresh)}
             response = self.client.post(refresh_url, data=payload, format='json')
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['detail'].title(), 'Invalid Token')
         self.assertNotIn('access_token', response.data)
+        self.assertEqual(response.data['detail'].title(), 'Invalid Token')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_logout_current(self):
         """ Test that logout endpoint is working correctly """
