@@ -64,7 +64,8 @@ class APIAuthTest(APITestCase):
         with self.assertNumQueries(2):
             """
              Expected queries:
-             
+             1- Retrieve user by authentication credentials
+             2- Create knox token in `validate` method of LoginSerializer
             """
             response = self.client.post(login_url, data=payload, format='json')
         self.assertIn('access_token', response.data)
@@ -79,16 +80,21 @@ class APIAuthTest(APITestCase):
         self.assertTrue(user.is_authenticated)
         return access, refresh
 
+    def test_invalid_algorithm(self):
+        """ Test setting invalid algorithm is raising error """
+        ac, re = self.login()
+        api_settings.JW_NX_ALGORITHM = 'Invalid'
+
+        response = self.with_token(ac).client.post(verify_url)
+        api_settings.JW_NX_ALGORITHM = 'HS256'
+
+        self.assertIn('Unrecognized algorithm type', str(response.data['detail']))
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def test_login(self):
         """ Test that login view is creating access_token and refresh_token """
         user = self.create_test_user()
-        with self.assertNumQueries(2):
-            """
-             Expected queries:
-             1- Retrieve user by authentication credentials
-             2- Create knox token in `validate` method of LoginSerializer
-            """
-            ac, re = self.login(user)
+        ac, re = self.login(user)
 
     def test_login_invalid_password(self):
         """ Test login user with invalid password """
@@ -199,6 +205,7 @@ class APIAuthTest(APITestCase):
 
         with self.assertNumQueries(1):
             response = self.with_token(str(access)).client.post(verify_url)
+            api_settings.JW_NX_LEEWAY = 0
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
