@@ -34,10 +34,10 @@ class LoginSerializer(serializers.Serializer):
     def validate_user(user):
         if user is None:
             msg = _('Unable to log in with provided credentials.')
-            raise exceptions.ValidationError(msg)
+            raise exceptions.AuthenticationFailed(msg)
         if not user.is_active:
             msg = _('User account is disabled.')
-            raise exceptions.ValidationError(msg)
+            raise exceptions.AuthenticationFailed(msg)
 
     def validate(self, attrs):
         auth_payload = {
