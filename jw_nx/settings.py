@@ -30,7 +30,6 @@ DEFAULTS = {
     'JW_NX_VERIFYING_KEY': None,
     'JW_NX_RETURN_EXPIRATION': False,  # Optional
     'JW_NX_UPDATE_LAST_LOGIN': False,  # Optional
-    'JW_NX_EXPIRE': timedelta(hours=10),
     'JW_NX_SECRET_KEY': settings.SECRET_KEY,
     'JW_NX_REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'JW_NX_ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
@@ -38,7 +37,8 @@ DEFAULTS = {
     'JW_NX_DECODE_HANDLER': 'jw_nx.utils.jwt_decode_handler',
     'JW_NX_PAYLOAD_HANDLER': 'jw_nx.utils.jwt_payload_handler',
     'JW_NX_RESPONSE_PAYLOAD_HANDLER': 'jw_nx.utils.jwt_response_payload_handler',
-    'JW_NX_LOGIN_AUTHENTICATION_CLASSES': settings.REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'],
+    'JW_NX_LOGIN_AUTHENTICATION_CLASSES': ['rest_framework.authentication.BasicAuthentication',
+                                           'rest_framework.authentication.SessionAuthentication']
 
 }
 
