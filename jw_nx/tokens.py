@@ -1,3 +1,4 @@
+import jwt
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from binascii import Error as binascii_Error
@@ -7,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from knox.crypto import hash_token
 from knox.models import AuthToken
 from knox.settings import CONSTANTS
+from rest_framework import exceptions
 
 from jw_nx.backends import TokenBackend
 from jw_nx.exceptions import TokenBackendError, TokenError
