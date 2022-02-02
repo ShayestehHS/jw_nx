@@ -1,4 +1,5 @@
 import random
+import string
 from datetime import timedelta
 
 from django.db.models import F
@@ -85,6 +86,19 @@ class APIAuthTest(APITestCase):
             user = self.create_test_user()
             ac, re = self.login(user)
 
+    def test_login_invalid_password(self):
+        """ Test login user with invalid password """
+        user = self.create_test_user()
+        payload = {
+            'username': user.username,
+            'password': 'invalid password'
+        }
+        # ToDo assert query num
+        # ToDo assert message of status
+        response = self.client.post(login_url, data=payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_verify(self):
         """ Test 'verify' endpoint """
         user = self.create_test_user()
@@ -137,6 +151,20 @@ class APIAuthTest(APITestCase):
 
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
             self.assertEqual(response.data['detail'].title().lower(), 'Invalid Token'.lower())
+
+    def test_verify_with_short_jkt(self):
+        """ Test that verify endpoint with short 'jkt' claim """
+        ac, re = self.login()
+        # Update jkt claim value
+        access = AccessToken()
+        access.payload = access.decode(ac)
+        access.payload['jkt'] = ''.join(random.choice(string.ascii_lowercase) for x in range(8))
+
+        with self.assertNumQueries(0):
+            response = self.with_token(str(access)).client.post(verify_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['detail'], "Invalid 'jtk' claim")
 
     def test_verify_with_expired_token(self):
         """ Test that expired knox token is not valid """
@@ -229,6 +257,21 @@ class APIAuthTest(APITestCase):
 
         self.assertNotIn('access_token', response.data)
         self.assertEqual(response.data['detail'].title(), 'Invalid Token')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_refresh_short_jtk(self):
+        """ Test that refresh token with short `jtk` claim is not valid """
+        ac, re = self.login()
+        refresh = RefreshToken()
+        refresh.validate_token(re)
+        refresh.payload['jkt'] = ''.join(random.choice(string.ascii_lowercase) for x in range(8))
+
+        with self.assertNumQueries(0):
+            payload = {'refresh_token': str(refresh)}
+            response = self.client.post(refresh_url, data=payload, format='json')
+
+        self.assertNotIn('access_token', response.data)
+        self.assertEqual(str(response.data['detail']), "Invalid 'jtk' claim")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_logout_current(self):
