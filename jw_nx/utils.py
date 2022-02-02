@@ -10,10 +10,10 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
-from knox.models import AuthToken, User
 
 from jw_nx.settings import api_settings
 
+User = get_user_model()
 sha = import_string('cryptography.hazmat.primitives.hashes.SHA512')
 
 
@@ -60,13 +60,6 @@ def get_username(user):
         return user.get_username()
     finally:
         return user.username
-
-
-def create_auth_token(user, expiry: timedelta):
-    _, token = AuthToken.objects.create(user=user, expiry=expiry)  # Create knox token
-    payload = jwt_payload_handler(user, token, expiry)
-
-    return jwt_encode_handler(payload)
 
 
 def jwt_decode_handler(token):
