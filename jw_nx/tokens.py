@@ -29,7 +29,6 @@ class Token:
     new JWT.
     """
     token_type = NotImplemented
-    lifetime = NotImplemented
     claims = NotImplemented
 
     def __init__(self, current_time=None, *args, **kwargs):
@@ -66,6 +65,9 @@ class Token:
                             api_settings.JW_NX_VERIFYING_KEY, api_settings.JW_NX_AUDIENCE,
                             api_settings.JW_NX_ISSUER, api_settings.JW_NX_JWK_URL,
                             api_settings.JW_NX_LEEWAY)
+
+    def get_lifetime(self):
+        raise NotImplementedError()
 
     def __str__(self):
         """ Signs and returns a token as a base64 encoded string. """
@@ -151,7 +153,7 @@ class Token:
         See here:
         https://tools.ietf.org/html/rfc7519#section-4.1.4
         """
-        lifetime: timedelta = self.lifetime
+        lifetime: timedelta = self.get_lifetime()
         from_time: datetime = self.current_time
         self.payload[claim] = datetime_to_unix(from_time + lifetime)
 
@@ -167,7 +169,7 @@ class Token:
     def set_jkt(self, user, jkt=None, claim='jkt'):
         """ Set JwtKnoxToken=jkt to payload """
         if jkt is None:
-            _, jkt = AuthToken.objects.create(user, expiry=self.lifetime)
+            _, jkt = AuthToken.objects.create(user, expiry=self.get_lifetime())
             bytes(jkt, 'utf-8')
 
         self.payload[claim] = jkt
@@ -203,8 +205,10 @@ class Token:
 
 class AccessToken(Token):
     token_type = 'access'
-    lifetime = api_settings.JW_NX_ACCESS_TOKEN_LIFETIME
-    claims = ('token_type', 'exp', f'user_id', 'jti', 'jkt')
+    claims = ('token_type', 'exp', 'user_id', 'jti', 'jkt')
+
+    def get_lifetime(self):
+        return api_settings.JW_NX_ACCESS_TOKEN_LIFETIME
 
     def set_jti(self):
         """
@@ -251,9 +255,11 @@ class AccessToken(Token):
 
 class RefreshToken(Token):
     token_type = 'refresh'
-    lifetime = api_settings.JW_NX_REFRESH_TOKEN_LIFETIME
     claims = ('token_type', 'exp', 'iat', 'jkt', f'user_id')
     is_verified: bool = False
+
+    def get_lifetime(self):
+        return api_settings.JW_NX_REFRESH_TOKEN_LIFETIME
 
     def verify_iat(self):
         try:
